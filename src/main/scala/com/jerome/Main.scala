@@ -2,6 +2,6 @@ package com.jerome
 
 object Main {
   def main(args: Array[String]): Unit = {
-    new EventProcessor().processFile()
+    EventLogFileReader.process("events")
   }
 }
