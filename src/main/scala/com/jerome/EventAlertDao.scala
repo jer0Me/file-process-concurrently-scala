@@ -8,14 +8,14 @@ import doobie.hikari.HikariTransactor
 
 object EventAlertDao {
 
-  implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
+  private implicit val contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
-  val driverClassName = "org.h2.Driver"
-  val databaseUrl = "jdbc:h2:~/test;DB_CLOSE_DELAY=-1"
-  val username = "sa"
-  val password = "sa"
+  private val driverClassName = "org.h2.Driver"
+  private val databaseUrl = "jdbc:h2:~/test;DB_CLOSE_DELAY=-1"
+  private val username = "sa"
+  private val password = "sa"
 
-  val transactor: Resource[IO, HikariTransactor[IO]] =
+  private val transactor: Resource[IO, HikariTransactor[IO]] =
     for {
       ce <- ExecutionContexts.fixedThreadPool[IO](32)
       be <- Blocker[IO]
@@ -42,26 +42,28 @@ object EventAlertDao {
       _ <- transactor.use { xa =>
              drop.transact(xa)
            }
-
-      - <- transactor.use { xa =>
-            create.transact(xa)
+      _ <- transactor.use { xa =>
+             create.transact(xa)
            }
     } yield ()
   }
 
-  def saveEventAlert(eventLogAlert: EventLogAlert): IO[Int] = {
+  def saveEventAlert(eventLogAlert: EventLogAlert): IO[Unit] = {
     transactor.use { xa =>
+      val yolo = xa.yolo
+      import yolo._
+
       insertEventAlert(
         eventLogAlert.id,
         eventLogAlert.duration,
         eventLogAlert.logType,
         eventLogAlert.host,
         eventLogAlert.isAlert
-      ).run.transact(xa)
+      ).quick
     }
   }
 
-  def insertEventAlert(eventId: String, duration: Int, logType: Option[String], host: Option[String], isAlert: Boolean): Update0 =
+  private def insertEventAlert(eventId: String, duration: Int, logType: Option[String], host: Option[String], isAlert: Boolean): Update0 =
     sql"""insert into event_alert (event_id, duration, type, host, alert)
                 values ($eventId, $duration, $logType, $host, $isAlert)
         """.update

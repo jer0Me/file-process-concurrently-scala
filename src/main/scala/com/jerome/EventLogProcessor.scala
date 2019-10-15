@@ -8,34 +8,35 @@ import org.slf4j.LoggerFactory
 
 object EventLogProcessor {
 
-  val logger = Logger(LoggerFactory.getLogger("EventLogProcessor"))
+  private val logger = Logger(LoggerFactory.getLogger("EventLogProcessor"))
 
   def processEventLogLines(eventLogLines: Iterator[String]): IO[Unit] = {
     for {
       _ <- EventAlertDao.initTable
 
-      - <- eventLogLines.foldLeft(IO(Map.empty[String, EventLog])) { (eventLogMap, eventLogLine) =>
-             parseEventLog(eventLogLine) match {
-               case Right(eventLog) => processEventLog(eventLogMap, eventLog)
-               case _ => eventLogMap
-             }
+      _ <- eventLogLines.foldLeft(IO(Map.empty[String, EventLog])) {
+        (registeredEventLogMap, eventLogLine) =>
+          parseEventLog(eventLogLine) match {
+            case Right(eventLog) => processEventLog(registeredEventLogMap, eventLog)
+            case _ => registeredEventLogMap
+          }
       }
     } yield ()
   }
 
-  def processEventLog(eventLogsMap: IO[Map[String, EventLog]],  eventLog: EventLog): IO[Map[String, EventLog]] = {
-    eventLogsMap.flatMap(map => {
-        if (map.contains(eventLog.id)) {
-          for {
-            _ <- checkEventLogDuration(map(eventLog.id), eventLog)
-          } yield map - eventLog.id
-        }
-        else
-          IO(map + (eventLog.id -> eventLog))
+  private def processEventLog(registeredEventLogMap: IO[Map[String, EventLog]], eventLog: EventLog): IO[Map[String, EventLog]] = {
+    registeredEventLogMap.flatMap(map => {
+      if (map.contains(eventLog.id)) {
+        for {
+          _ <- saveEventAlert(map(eventLog.id), eventLog)
+        } yield map - eventLog.id
+      }
+      else
+        IO(map + (eventLog.id -> eventLog))
     })
   }
 
-  def checkEventLogDuration(firstEventLog: EventLog, lastEventLog: EventLog): IO[Int] = {
+  private def saveEventAlert(firstEventLog: EventLog, lastEventLog: EventLog): IO[Unit] = {
     val duration: Int = (firstEventLog.timestamp - lastEventLog.timestamp).abs.toInt
     val eventLogAlert: EventLogAlert =
       firstEventLog.into[EventLogAlert]
@@ -46,7 +47,7 @@ object EventLogProcessor {
     EventAlertDao.saveEventAlert(eventLogAlert)
   }
 
-  def parseEventLog(eventLogLine: String): Either[Error, EventLog] = {
+  private def parseEventLog(eventLogLine: String): Either[Error, EventLog] = {
     parser.decode[EventLog](eventLogLine) match {
       case Right(eventLog) => Right(eventLog)
       case Left(error) =>
