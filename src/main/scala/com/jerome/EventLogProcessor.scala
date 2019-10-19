@@ -1,39 +1,36 @@
 package com.jerome
 
+import com.jerome.EventLog._
 import cats.effect.IO
-import com.typesafe.scalalogging.Logger
-import io.circe._
+import cats.syntax.applicative._
 import io.scalaland.chimney.dsl._
-import org.slf4j.LoggerFactory
 
 object EventLogProcessor {
-
-  private val logger = Logger(LoggerFactory.getLogger("EventLogProcessor"))
 
   def processEventLogLines(eventLogLines: Iterator[String]): IO[Unit] = {
     for {
       _ <- EventAlertDao.initTable
 
-      _ <- eventLogLines.foldLeft(IO(Map.empty[String, EventLog])) {
+      _ <- eventLogLines.foldLeft(Map.empty[String, EventLog].pure[IO]) {
         (registeredEventLogMap, eventLogLine) =>
-          parseEventLog(eventLogLine) match {
-            case Right(eventLog) => processEventLog(registeredEventLogMap, eventLog)
-            case _ => registeredEventLogMap
-          }
+          eventLogLine
+            .toEventLog
+            .map { processEventLog(registeredEventLogMap, _) }
+            .getOrElse(registeredEventLogMap)
       }
     } yield ()
   }
 
-  private def processEventLog(registeredEventLogMap: IO[Map[String, EventLog]], eventLog: EventLog): IO[Map[String, EventLog]] = {
-    registeredEventLogMap.flatMap(map => {
-      if (map.contains(eventLog.id)) {
+  private def processEventLog(registeredEventLogMap: IO[Map[String, EventLog]],
+                              eventLog: EventLog): IO[Map[String, EventLog]] = {
+    registeredEventLogMap.flatMap { eventLogMap =>
+      if (eventLogMap.contains(eventLog.id))
         for {
-          _ <- saveEventAlert(map(eventLog.id), eventLog)
-        } yield map - eventLog.id
-      }
+          _ <- saveEventAlert(eventLogMap(eventLog.id), eventLog)
+        } yield eventLogMap - eventLog.id
       else
-        IO(map + (eventLog.id -> eventLog))
-    })
+        (eventLogMap + (eventLog.id -> eventLog)).pure[IO]
+    }
   }
 
   private def saveEventAlert(firstEventLog: EventLog, lastEventLog: EventLog): IO[Unit] = {
@@ -45,14 +42,5 @@ object EventLogProcessor {
         .transform
 
     EventAlertDao.saveEventAlert(eventLogAlert)
-  }
-
-  private def parseEventLog(eventLogLine: String): Either[Error, EventLog] = {
-    parser.decode[EventLog](eventLogLine) match {
-      case Right(eventLog) => Right(eventLog)
-      case Left(error) =>
-        logger.error(s"There was an error parsing: $eventLogLine", error)
-        Left(error)
-    }
   }
 }

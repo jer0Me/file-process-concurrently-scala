@@ -2,7 +2,9 @@ package com.jerome
 
 import io.circe._
 import cats.instances.either._
+import cats.instances.string._
 import cats.syntax.apply._
+import cats.syntax.eq._
 
 case class EventLog(id: String,
                     state: EventLog.State,
@@ -19,7 +21,7 @@ object EventLog {
     case object Finished extends State
 
     def fromString(state: String): State =
-      if ("STARTED" == state.toUpperCase)
+      if ("STARTED" === state.toUpperCase)
         Started
       else
         Finished
@@ -32,6 +34,11 @@ object EventLog {
       hCursor.getOrElse[Option[String]]("host")(None),
       hCursor.getOrElse[Option[String]]("type")(None)
     ).mapN(EventLog.apply)
+
+  implicit class EventLogJsonParser(eventLogJson: String) {
+    def toEventLog: Either[Error, EventLog] =
+      parser.decode[EventLog](eventLogJson)
+  }
 
 }
 
