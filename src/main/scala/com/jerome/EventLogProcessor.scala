@@ -21,15 +21,15 @@ object EventLogProcessor {
     } yield ()
   }
 
-  private def processEventLog(registeredEventLogMap: IO[Map[String, EventLog]],
+  private def processEventLog(registeredEventLogMapIO: IO[Map[String, EventLog]],
                               eventLog: EventLog): IO[Map[String, EventLog]] = {
-    registeredEventLogMap.flatMap { eventLogMap =>
-      if (eventLogMap.contains(eventLog.id))
+    registeredEventLogMapIO.flatMap { registeredEventLogMap =>
+      if (registeredEventLogMap.contains(eventLog.id))
         for {
-          _ <- saveEventAlert(eventLogMap(eventLog.id), eventLog)
-        } yield eventLogMap - eventLog.id
+          _ <- saveEventAlert(registeredEventLogMap(eventLog.id), eventLog)
+        } yield registeredEventLogMap - eventLog.id
       else
-        (eventLogMap + (eventLog.id -> eventLog)).pure[IO]
+        (registeredEventLogMap + (eventLog.id -> eventLog)).pure[IO]
     }
   }
 
