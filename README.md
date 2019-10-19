@@ -33,17 +33,11 @@ In the example above, the event scsmbstgrb duration is 1401377495216 - 149137749
 The application: 
 
 - Takes the input file path as input argument
-- Flags any long events that take longer than 4ms with a column in the database called "alert" Write the found event details to file-based HSQLDB (http://hsqldb.org/) in the working folder
+- Flags any long events that take longer than 4ms with a column in the database called "alert" Write the found event details to file-based H2 in the working folder
 - Creates a new table if necessary and enter the following values: 
   * Event id
   * Event duration
   * Type and Host if applicable "alert" true is applicable
 
-To test the application:
 
-- Build the jar file by executing: ***./gradlew jar***
-
-- The jar will be located in ***build/file-process-concurrently-1.0-SNAPSHOT.jar***
-
-- execute the jar: ***java -jar build/file-process-concurrently-1.0-SNAPSHOT.jar filePath [numberOfThreads]***
 
