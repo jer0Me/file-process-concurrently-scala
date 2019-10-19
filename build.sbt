@@ -1,4 +1,4 @@
-name := "file-processor-concurrently-scala"
+name := "logs-processor"
 
 version := "0.1"
 
