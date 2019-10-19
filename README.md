@@ -1,6 +1,6 @@
-# file-process-concurrently-scala
+# logs-processor
 
-Simple scala application to process a log file concurrently.
+Simple scala application to process a log file.
 
 The file should have the following format:
 
