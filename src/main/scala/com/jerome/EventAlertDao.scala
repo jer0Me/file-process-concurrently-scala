@@ -17,9 +17,16 @@ object EventAlertDao {
 
   private val transactor: Resource[IO, HikariTransactor[IO]] =
     for {
-      ce <- ExecutionContexts.fixedThreadPool[IO](32)
-      be <- Blocker[IO]
-      xa <- HikariTransactor.newHikariTransactor[IO](driverClassName, databaseUrl, username, password, ce, be)
+      connectEC <- ExecutionContexts.fixedThreadPool[IO](32)
+      blocker <- Blocker[IO]
+      xa <- HikariTransactor.newHikariTransactor[IO](
+        driverClassName = driverClassName,
+        url = databaseUrl,
+        user = username,
+        pass = password,
+        connectEC = connectEC,
+        blocker = blocker
+      )
     } yield xa
 
   def initTable: IO[Unit] = {
@@ -54,16 +61,21 @@ object EventAlertDao {
       import yolo._
 
       insertEventAlert(
-        eventLogAlert.id,
-        eventLogAlert.duration,
-        eventLogAlert.logType,
-        eventLogAlert.host,
-        eventLogAlert.isAlert
+        eventId = eventLogAlert.id,
+        duration = eventLogAlert.duration,
+        logType = eventLogAlert.logType,
+        host = eventLogAlert.host,
+        isAlert = eventLogAlert.isAlert
       ).quick
     }
   }
 
-  private def insertEventAlert(eventId: String, duration: Int, logType: Option[String], host: Option[String], isAlert: Boolean): Update0 =
+  private def insertEventAlert(eventId: String,
+                               duration: Int,
+                               logType: Option[String],
+                               host: Option[String],
+                               isAlert: Boolean): Update0 =
+
     sql"""insert into event_alert (event_id, duration, type, host, alert)
                 values ($eventId, $duration, $logType, $host, $isAlert)
         """.update

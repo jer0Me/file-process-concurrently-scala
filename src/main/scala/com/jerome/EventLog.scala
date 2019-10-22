@@ -6,7 +6,7 @@ import cats.instances.string._
 import cats.syntax.apply._
 import cats.syntax.eq._
 
-case class EventLog(id: String,
+final case class EventLog(id: String,
                     state: EventLog.State,
                     timestamp: Long,
                     host: Option[String],
@@ -14,7 +14,7 @@ case class EventLog(id: String,
 
 object EventLog {
 
-  sealed trait State
+  sealed trait State extends Product with Serializable
 
   object State {
     case object Started extends State

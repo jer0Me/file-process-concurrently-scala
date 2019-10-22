@@ -24,12 +24,14 @@ object EventLogProcessor {
   private def processEventLog(registeredEventLogMapIO: IO[Map[String, EventLog]],
                               eventLog: EventLog): IO[Map[String, EventLog]] = {
     registeredEventLogMapIO.flatMap { registeredEventLogMap =>
-      if (registeredEventLogMap.contains(eventLog.id))
-        for {
-          _ <- saveEventAlert(registeredEventLogMap(eventLog.id), eventLog)
-        } yield registeredEventLogMap - eventLog.id
-      else
-        (registeredEventLogMap + (eventLog.id -> eventLog)).pure[IO]
+      registeredEventLogMap.get(eventLog.id) match {
+        case Some(eventLog) =>
+          for {
+            _ <- saveEventAlert(registeredEventLogMap(eventLog.id), eventLog)
+          } yield registeredEventLogMap - eventLog.id
+          
+        case None => (registeredEventLogMap + (eventLog.id -> eventLog)).pure[IO]
+      }
     }
   }
 
